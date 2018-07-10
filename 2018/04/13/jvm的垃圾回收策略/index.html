@@ -1,0 +1,259 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>jvm的垃圾回收策略 | 努力攀登的Android仔</title>
+
+  
+  <meta name="author" content="Sven Han">
+  
+
+  
+  <meta name="description" content="#jvm的垃圾回收策略
+#Android学习计划#  #第十四周# 
+话题：简单描述下jvm的垃圾回收策略，比如引用计数、标记清除等策略 关键字：引用计数、标记清除、gc 
+###在讨论GC的原理之前，我们要搞清楚JVM对于内存是如何分配的  Java 内存分配的原理是先一次性分配一块较大的空间，然">
+  
+
+  
+  <meta name="keywords" content="星球作业,">
+  
+
+  <meta id="viewport" name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+  <meta property="og:title" content="jvm的垃圾回收策略"/>
+
+  <meta property="og:site_name" content="努力攀登的Android仔"/>
+
+  
+  <meta property="og:image" content="/favicon.ico"/>
+  
+
+  <link href="/favicon.ico" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="努力攀登的Android仔" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+</head>
+
+
+<body>
+<div class="blog">
+  <div class="content">
+
+    <header>
+  <div class="site-branding">
+    <h1 class="site-title">
+      <a href="/">努力攀登的Android仔</a>
+    </h1>
+    <p class="site-description"></p>
+  </div>
+  <nav class="site-navigation">
+    <ul>
+      
+        <li><a href="/">Home</a></li>
+      
+        <li><a href="/archives">Archives</a></li>
+      
+    </ul>
+  </nav>
+</header>
+
+    <main class="site-main posts-loop">
+    <article>
+
+  
+    
+    <h3 class="article-title"><span>jvm的垃圾回收策略</span></h3>
+    
+  
+
+  <div class="article-top-meta">
+    <span class="posted-on">
+      <a href="/2018/04/13/jvm的垃圾回收策略/" rel="bookmark">
+        <time class="entry-date published" datetime="2018-04-13T08:30:15.000Z">
+          2018-04-13
+        </time>
+      </a>
+    </span>
+  </div>
+
+
+  
+
+  <div class="article-content">
+    <div class="entry">
+      
+        <p>#jvm的垃圾回收策略</p>
+<p>#Android学习计划#  #第十四周# </p>
+<p>话题：简单描述下jvm的垃圾回收策略，比如引用计数、标记清除等策略 <br><br>关键字：引用计数、标记清除、gc <br></p>
+<p>###在讨论GC的原理之前，我们要搞清楚JVM对于内存是如何分配的<br>  Java 内存分配的原理是先一次性分配一块较大的空间，然后每次 new 是都在该空间上进行分配和释放，有点像内存池的做法。<br><br>  Java 一般内存申请有两种：静态内存和动态内存。<br>比如 int 类型变量的申请内存，所申请的内存是固定的，所以是一种静态存储。Java 栈、程序计数器、本地方法栈 都是线程私有的，而线程的管理与栈针密切相关,栈中的栈针会随着方法的结束也会撤销，内存自然也就回收了。<br><br>  重点是在方法区和 Java 堆，这部分的只有在程序运行期间我们才知道会创建哪些对象，所以这部分内存的分配和回收是动态进行的，一般来说我们所说的垃圾回收也是针对这两块。</p>
+<p>##<font color="red">言而总之，我们所谈及的回收策略一般来说包含两个步骤，一个是检测垃圾，另外一个是回收垃圾。</font></p>
+<p>##（一）检测垃圾<br>判断对象是否可以回收的算法：（两个：引用计数算法和可达性分析算法）</p>
+<p>1.引用计数算法</p>
+<blockquote>
+<p>给对象添加一个引用计数器，每当有一个地方引用它，计数器加1；</p>
+</blockquote>
+<blockquote>
+<p> 当引用失效，计数器值减1；</p>
+</blockquote>
+<blockquote>
+<p> 任何时刻计数器值为0，则认为对象是不再被使用的；    </p>
+</blockquote>
+<p><a>优点</a><br>实现简单，判定高效，可以很好解决大部分场景的问题</p>
+<p><a>缺点</a><br>（A）、很难解决对象之间相互循环引用的问题<br>（B）、并且开销较大，频繁且大量的引用变化，带来大量的额外运算<br>主流的JVM都没有选用引用计数算法来管理内存；</p>
+<p>2.可达性分析算法（Reachability Analysis）  </p>
+<blockquote>
+<p>通过一系列”GC Roots”对象作为起始点，开始向下搜索；<br>搜索所走过和路径称为引用链（Reference Chain）；<br>当一个对象到GC Roots没有任何引用链相连时（从GC Roots到这个对象不可达），则证明该对象是不可用的；  </p>
+</blockquote>
+<p><img src="F:\\1素材\\20170102213857043.jpg" alt="Alt text">  </p>
+<p>Java中，GC Roots对象包括：</p>
+<pre><code>（1）、虚拟机栈（栈帧中本地变量表）中引用的对象；
+
+（2）、方法区中类静态属性引用的对象；
+
+（3）、方法区中常量引用的对象；
+
+（4）、本地方法栈中JNI（Native方法）引用的对象；  
+</code></pre><p><a>优点</a><br>更加精确和严谨，可以分析出循环数据结构相互引用的情况；</p>
+<p><a>缺点</a>  </p>
+<ol>
+<li>实现比较复杂;  </li>
+<li>需要分析大量数据，消耗大量时间；<br><code>因为GC Roots主要在全局性的引用（常量或静态属性）和执行上下文中（栈帧中的本地变量表）要在这些大量的数据中，逐个检查引用，会消耗很多时间；</code>   </li>
+</ol>
+<p>3.分析过程需要GC停顿（引用关系不能发生变化），即停顿所有Java执行线程（称为”Stop The World”，是垃圾回收重点关注的问题）；<br>    <code>可达性分析期间需要保证整个执行系统的一致性，对象的引用关系不能发生变化；是JVM在后台自动发起和自动完成的；在用户不可见的情况下，把用户正常的工作线程全部停掉；</code></p>
+<p><a>下面继续谈谈可达性算法的执行过程</a><br>1.查找GC Roots，也叫作枚举根节点；然而主流JVM都是准确式GC，不需要全部、逐个检查，并且在HotSpot中，是使用一组称为OopMap的数据结构来达到这个目的的；  </p>
+<pre><code>只在特定的位置记录OopMap引用关系，这些位置称为安全点（Safepoint）；  
+特定位置有：基本上是以程序&quot;是否具有让程序长时间执行的特征&quot;为选定，如：方法调用、循环跳转、循环的末尾、异常跳转等，只有具有这些功能的指令才会产生Safepoint；
+</code></pre><p>在安全点上停顿的方式：（A）、抢先式中断（Preemptive Suspension）；（B）、主动式中断（Voluntary Suspension）</p>
+<p>##（二）回收垃圾<br>垃圾回收算法：</p>
+<p>1.复制算法</p>
+<p>2.标记-清除算法</p>
+<p>3.标记-整理算法</p>
+<p>4.分代收集算法</p>
+<p>#####分代收集算法（实际上是对前三种方法的良好应用）</p>
+<blockquote>
+<p>一般是把Java堆内存分为新生代和老年代,把Java对象分为（新生代、老年代、永久代三种），然后根据各个年代的特点采用最适当的收集算法。  </p>
+</blockquote>
+<blockquote>
+<p><a>在新生代中，每次垃圾收集时都发现有大批对象死去，只有少量存活，那就选用复制算法，只需要付出少量存活对象的复制成本就可以完成收集。</a>  </p>
+</blockquote>
+<blockquote>
+<font color="red"> 而老年代中因为对象存活率高、没有额外空间对它进行分配担保，就必须使用“标记-清理”或“标记-整理”算法来进行回收。</font>  
+</blockquote>
+<blockquote>
+<p>另外，方法区永久代的回收方法同老年代。</p>
+</blockquote>
+<p>#####jvm对内存区域划分为堆内存和方法区(栈呢？)<br>tips：一般的，Java中对象的内存分配都是在堆上进行，但现代技术也支持将对象拆成标量类型（标量类型即原子类型，表示单个值，可以是基本类型或String等），然后在栈上分配，在栈上分配的很少见</p>
+<blockquote>
+<p>新生代和老年代对象存在堆内存，永久代对象存在方法区</p>
+</blockquote>
+<p>##对于Java堆内存，JVM规范要求必须实现GC回收，但是JVM规范对方法区的GC并不做要求，所以垃圾回收算法都是针对Java堆内存的。    </p>
+<p>对于新生代对象：<br>使用复制算法：使用两块10%的内存作为空闲和活动区间，而另外80%的内存，则是用来给新建对象分配内存的。一旦发生GC，将10%的活动区间与另外80%中存活的对象转移到10%的空闲区间，接下来，将之前90%的内存全部释放，以此类推。</p>
+<p>对于老年代对象：<br>针对老年代对象只能采用标记/整理或者标记/清除算法。   </p>
+<p>对于永久代对象：<br>（已经不属于垃圾回收算法的内容了）在我们常用的hotspot虚拟机中（JDK默认的JVM），与老年代采用相似的方法，使用标记/清除和标记/整理算法。</p>
+<blockquote>
+<p>Tips：GC按照回收的区域又分了两种类型:一种是普通GC（minor GC）(只针对新生代)，一种是全局GC（major GC or Full GC）(针对所有分代区域)，</p>
+</blockquote>
+<p>#####1.在谈论回收垃圾对象之前，我们先说说Java中的对象是如何引用的<br>Java程序通过<code>reference</code>类型 操作堆上的具体对象，分为两个层面：jvm层面和Java语言层面；  </p>
+<ol>
+<li><p>jvm层面的引用  </p>
+<p>   reference类型是引用类型（Reference Types）的一种；</p>
+<p>   JVM规范规定reference类型来表示对某个对象的引用，可以想象成类似于一个指向对象的指针；</p>
+<p>   对象的操作、传递和检查都通过引用它的reference类型的数据进行操作；  </p>
+</li>
+<li><p>Java语言层面   </p>
+<pre><code>(1)强引用(2)软引用(3)弱引用(4)虚引用  
+</code></pre></li>
+</ol>
+<p>#####2.谈论完如何引用对象之后，再来谈谈如何判断对象是否存活<br>    要真正宣告一个对象死亡，至少要经历两次标记过程。 </p>
+<p><a>第一次标记</a><br> 在可达性分析后发现到GC Roots没有任何引用链相连时，被第一次标记；<br> 并且进行一次筛选：此对象是否必要执行finalize()方法；  </p>
+<pre><code>（A）、没有必要执行
+
+  没有必要执行的情况：
+
+  （1）、对象没有覆盖finalize()方法；
+
+  （2）、finalize()方法已经被JVM调用过；
+
+  这两种情况就可以认为对象已死，可以回收；
+
+（B）、有必要执行
+
+  对有必要执行finalize()方法的对象，被放入F-Queue队列中；
+
+  稍后在JVM自动建立、低优先级的Finalizer线程（可能多个线程）中触发这个方法；
+</code></pre><p><a>第二次标记</a><br>GC将对F-Queue队列中的对象进行第二次小规模标记；<br>finalize()方法是对象逃脱死亡的最后一次机会：  </p>
+<pre><code>（A）、如果对象在其finalize()方法中重新与引用链上任何一个对象建立关联，第二次标记时会将其移出&quot;即将回收&quot;的集合；
+
+（B）、如果对象没有，也可以认为对象已死，可以回收了；                    
+
+一个对象的finalize()方法只会被系统自动调用一次，经过finalize()方法逃脱死亡的对象，第二次不会再调用；  
+</code></pre><p>tips：关于finalize方法<br>finalize()是Object类的一个方法，是Java刚诞生时为了使C/C++程序员容易接受它所做出的一个妥协，但不要当作类似C/C++的析构函数；因为它执行的时间不确定，甚至是否被执行也不确定，<font color="red"> 一般情况下，应尽量避免使用它，甚至可以忘掉它。</font>  </p>
+<p>参考文章：<a href="https://blog.csdn.net/mccand1234/article/details/52078645" target="_blank" rel="noopener">Java 分代收集算法</a>     <a href="https://blog.csdn.net/tjiyu/article/details/53982412" target="_blank" rel="noopener">Java虚拟机垃圾回收</a>   </p>
+
+      
+    </div>
+
+  </div>
+
+  <div class="article-footer">
+    <div class="article-meta pull-left">
+
+    
+
+    
+    
+
+    <span class="post-tags">
+      <i class="icon-tags"></i>
+        <a href="/tags/Android-高级进阶/">Android 高级进阶</a>
+    </span>
+    
+
+    </div>
+
+    
+  </div>
+</article>
+
+  
+	<section id="comment" class="comment">
+		<div id="gitment"></div>
+	</section>
+	<link rel="stylesheet" href="https://imsun.github.io/gitment/style/default.css">
+	<script src="https://imsun.github.io/gitment/dist/gitment.browser.js"></script>
+	<script>
+		var gitment = new Gitment({
+			owner: '',
+			repo: '',
+			oauth: {
+				client_id: '',
+				client_secret: '',
+			},
+		})
+		gitment.render('gitment')
+	</script>
+
+
+
+
+
+    </main>
+
+    <footer class="site-footer">
+  <p class="site-info">
+    Proudly powered by <a href="https://hexo.io/" target="_blank">Hexo</a> and
+    Theme by <a href="https://github.com/CodeDaraW/Hacker" target="_blank">Hacker</a>
+    </br>
+    
+    &copy; 2018 Sven Han
+    
+  </p>
+</footer>
+    
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,271 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>Java中的序列化 | 努力攀登的Android仔</title>
+
+  
+  <meta name="author" content="Sven Han">
+  
+
+  
+  <meta name="description" content="Twitter 的高性能序列化框架 Serial
+
+数据序列化在 Android 应用开发中占据着举足轻重的位置，无论是进程间通信，本地数据存储，网络数据传输等等，都离不开序列化的支持。针对不同场景选择正确的序列化方案，对应用的性能有着极大的影响。
+
+
+广义上讲，序列化是将数据结构或者对象转换成可用">
+  
+
+  
+  
+  <meta name="keywords" content="Android 高级进阶">
+  
+
+  <meta id="viewport" name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+  <meta property="og:title" content="Java中的序列化"/>
+
+  <meta property="og:site_name" content="努力攀登的Android仔"/>
+
+  
+  <meta property="og:image" content="/favicon.ico"/>
+  
+
+  <link href="/favicon.ico" rel="icon">
+  <link rel="alternate" href="/atom.xml" title="努力攀登的Android仔" type="application/atom+xml">
+  <link rel="stylesheet" href="/css/style.css" media="screen" type="text/css">
+</head>
+
+
+<body>
+<div class="blog">
+  <div class="content">
+
+    <header>
+  <div class="site-branding">
+    <h1 class="site-title">
+      <a href="/">努力攀登的Android仔</a>
+    </h1>
+    <p class="site-description"></p>
+  </div>
+  <nav class="site-navigation">
+    <ul>
+      
+        <li><a href="/">Home</a></li>
+      
+        <li><a href="/archives">Archives</a></li>
+      
+    </ul>
+  </nav>
+</header>
+
+    <main class="site-main posts-loop">
+    <article>
+
+  
+    
+    <h3 class="article-title"><span>Java中的序列化</span></h3>
+    
+  
+
+  <div class="article-top-meta">
+    <span class="posted-on">
+      <a href="/2017/12/11/Java中的序列化/" rel="bookmark">
+        <time class="entry-date published" datetime="2017-12-11T09:56:15.000Z">
+          2017-12-11
+        </time>
+      </a>
+    </span>
+  </div>
+
+
+  
+
+  <div class="article-content">
+    <div class="entry">
+      
+        <p><br></p>
+<h1 id="Twitter-的高性能序列化框架-Serial"><a href="#Twitter-的高性能序列化框架-Serial" class="headerlink" title="Twitter 的高性能序列化框架 Serial"></a>Twitter 的高性能序列化框架 Serial</h1><p><br></p>
+<blockquote>
+<p>数据序列化在 Android 应用开发中占据着举足轻重的位置，无论是进程间通信，本地数据存储，网络数据传输等等，都离不开序列化的支持。针对不同场景选择正确的序列化方案，对应用的性能有着极大的影响。</p>
+</blockquote>
+<blockquote>
+<p>广义上讲，序列化是将数据结构或者对象转换成可用于存储或者传输的数据格式的过程，在序列化期间，数据结构或者对象将其状态信息写入到临时或者持久性存储区中；反序列化是将序列化过程中生成的数据还原成数据结构或者对象的过程。Android 应用开发有很多种可选的序列化和反序列化方案，我们在《Android 高级进阶》一书的《Android 数据序列化方案研究》一节已经做过介绍。在正式开始 Serial 相关内容之前，这里我们先来简单回顾一下几个跟本文主题密切相关的序列化方式。</p>
+</blockquote>
+<font color="#159957" size="5" face="微软雅黑">序列化基础之</font>
+
+<font color="#159957" size="5" face="微软雅黑"><strong>Serializable</strong></font>
+
+<p><br></p>
+<blockquote>
+<p><em>Serializable</em> 是 Java 语言的特性，它是最简单的也是使用最广泛的序列化方案之一，只有实现了 Serializable 接口的 Java 对象才可以实现内建的序列化，这种类型的序列化是将 Java 对象转换成字节序列的过程，而反序列化则是将字节序列恢复成 Java 对象的过程。</p>
+</blockquote>
+<pre>
+public interface Serializable{
+}
+</pre>
+Serializable 接口是一种标识接口，也就是无需实现方法，Java 便会对这个对象进行序列化操作。它的缺点是使用反射机制，在序列化的过程中会创建很多临时对象，容易触发垃圾回收，序列化的过程比较慢，对于性能要求很严格的场景不建议使用这种方案。
+
+
+<font color="#159957" size="5" face="微软雅黑">**Externalizable**</font>
+
+Externalizable 接口继承自 Serializable 接口，并定义了 `writeExternal` 和 `readExternal` 这两个方法，从而让开发者对序列化过程拥有更多的控制权，方便的实现自定义操作，同时可以实现一些使用 Serializable 接口无法实现的功能，例如实现 Serializable 接口的对象，其中 static 和 transient 类型的成员变量默认是不会被序列化的，而通过实现 Externalizable 接口开发者可以对 static 和 transient 类型的成员变量进行手动序列化的。
+<pre>
+public interface Externalizable extends java.io.Serializable { 
+ void writeExternal(ObjectOutput out)throws IOException; 
+ void readExternal(ObjectInput in)throws IOException,ClassNotFoundException;
+}
+</pre>
+当然，Externalizable 接口的序列化机制跟 Serializable 接口一样，都是基于反射机制的，性能方面也是比较差的。
+
+<br>
+<font color="#159957" size="5" face="微软雅黑">**Parcelable**</font>
+<br>
+
+前面两种序列化方式都是 Java 内置的接口，可以将对象序列化到磁盘文件，数据库，网络等。到了 Android 平台，为了实现 Android 应用内以及应用间（基于 AIDL）高效的数据传输，Android 设计了 Parcelable 接口，需要注意的是，Parcelable 只支持内存方式的序列化，不能将对象序列化到磁盘等介质。
+因此，Serial 跟 Serializable（Externalizable）的关键区别是性能，跟 Parcelable 的关键区别是能够序列化到的介质。
+<pre>
+public interface Parcelable {
+    public static final int PARCELABLE_WRITE_RETURN_VALUE = 0x0001;
+    public static final int CONTENTS_FILE_DESCRIPTOR = 0x0001;
+
+    public int describeContents();
+    public void writeToParcel(Parcel dest, int flags);
+    public interface Creator<t> {
+        public T createFromParcel(Parcel source);
+        public T[] newArray(int size);
+    }
+    public interface ClassLoaderCreator<t> extends Creator<t> {
+        public T createFromParcel(Parcel source, ClassLoader loader);
+    }
+}
+</t></t></t></pre>
+
+
+<font color="#159957" size="5" face="微软雅黑"><strong>Serial的特性</strong></font>
+
+<p>Android 应用的流畅度是影响用户体验的关键性能指标之一，没有用户会喜欢使用起来卡顿的应用。具体到 Twitter 的 Android 端应用，经过性能剖析，他们的开发者发现，使用标准的 Android Externalizable 接口实现的 Java 对象和数据库之间的序列化和反序列化所花的时间占 UI 线程时间的 15% 左右，这使得 Twitter 时间轴滚动的流畅度受到对象序列化的严重影响。现有的对象序列化开源库对对象的迭代式修改提供的支持有限，任何可能破坏对象序列化的修改都会引入难以定位的 bugs，修复起来也非常困难，除非清除数据库数据。因此，Twitter 研发并于近期推出了 <a href="https://github.com/twitter/Serial" target="_blank" rel="noopener">Serial</a>，一个开源的基于 Java 平台的轻量级对象序列化框架（同时支持 Android 平台）。</p>
+<p>Serial 解决了传统 Android 序列化函数库的以下四大痛点：</p>
+<ol>
+<li>性能：缓慢的序列化直接影响用户体验</li>
+<li>可调试性：当序列化后的数据中存在 bugs 时，调试信息不足以定位问题的原因</li>
+<li>向后兼容性：在不完全清除序列化后数据的前提下，Android 提供的序列化函数库几乎不支持对序列化对象进行修改，这使得对象属性的迭代升级变得困难</li>
+<li>灵活性：序列化函数库的使用应该对现有代码和模型类的数据结构侵入性小</li>
+</ol>
+<p>虽然现有的一些 Java 序列化函数库像 <a href="https://github.com/EsotericSoftware/kryo/" target="_blank" rel="noopener">Kryo</a> 和 <a href="http://google.github.io/flatbuffers/" target="_blank" rel="noopener">Flatbuffer</a> 尝试解决上面一些痛点，但这些函数库重点在对性能和向后兼容性的支持上，通常忽略了对可调试性和灵活性的支持，例如为了在项目中使用这些函数库，通常需要对现有代码库作较大的改动。</p>
+<p>使用 Java 的 Externalizable 类实现序列化时，类相关信息例如类名和包名，会被添加进序列化后生成的二进制数据中。这样，Java 平台才能根据这些信息在反序列化时通过反射机制还原这个对象，但同时这是一个非常耗时的操作。为了解决这个问题，Serial 通过规范开发者为每个需要序列化的对象实现 <code>Serializer</code> 内部类，并明确列举哪些属性需要序列化和反序列化，从而摒弃了反射机制和动态查找的使用。</p>
+<p>使用 Serial 对一个大对象进行序列化和反序列化测试，和 Externalizable 方式相比，初步的性能指标如下所示：</p>
+<ul>
+<li>序列化速度提升 5 倍，反序列化速度提升 2.5 倍</li>
+<li>序列化后生成的数据字节大小约等于原来的 1/5</li>
+</ul>
+<p><font color="#159957" size="5" face="微软雅黑"><strong>Serial 的基本用法</strong></font><br><br></p>
+<p>Serial 的使用很简单，首先我们为每个需要序列化的类定义一个 Serializer，它通常是以静态内部类的形式存在，并通过定义名为 SERIALIZER 的静态变量来访问它。Serializer 要求开发者显式的对序列化类中的属性进行读写，如果是原始数据类型，那么直接读写即可，如果是对象类型则递归调用该对象中定义的 Serializer 来读写。Serializer 在读写对象类型和字符串类型时能自动处理 null 对象。下面的例子中，我们在 ExampleObject 类中定义了一个继承自 ObjectSerializer 的 Serializer 内部类，并重写 serializeObject 和 deserializeObject 方法分别实现自定义的序列化和反序列化。</p>
+<pre>
+public static class ExampleObject {
+
+    // 序列化时会使用到这个静态变量
+    public static final ObjectSerializer<exampleobject> SERIALIZER = new ExampleObjectSerializer();
+
+    public final int num;
+    public final SubObject obj;
+
+    public ExampleObject(int num, @NotNull SubObject obj) {
+        this.num = num;
+        this.obj = obj;
+    }
+
+    ...
+
+    private static final ExampleObjectSerializer extends ObjectSerializer<exampleobject> {
+        // 自定义序列化操作
+        @Override
+        protected void serializeObject(@NotNull SerializerOutput output,
+                @NotNull ExampleObject object) throws IOException {
+            output.writeInt(object.num)
+                .writeObject(object.obj, SubObject.SERIALIZER);
+        }
+
+        // 自定义反序列化操作
+        @Override
+        @NotNull
+        protected ExampleObject deserializeObject(@NotNull SerializerInput input,
+                int versionNumber) throws IOException, ClassNotFoundException {
+            final int num = input.readInt();
+            final SubObject obj = input.readObject(SubObject.SERIALIZER);
+            return new ExampleObject(num, obj);
+        }
+    }
+}</exampleobject></exampleobject></pre>
+
+<p>上面这个例子 ExampleObject 是通过构造方法初始化的，但有的时候，我们会使用 <strong>Builder 模式</strong>来实例化一个类（详情可以参见《Android 高级进阶》一书的《Builder 模式详解》一节）；又或者在 Serial 中要实现对象的迭代式修改，这时候我们的 Serializer 类就不能继承 ObjectSerializer，而应该继承 BuilderSerializer 类，并重写 createBuilder，serializeObject 和 deserializeToBuilder 这三个方法。</p>
+<p>关注我的GitHub主页 <a href="https://github.com/CrazeJack" target="_blank" rel="noopener">CrazeJack</a>.<br><img src="http://upload-images.jianshu.io/upload_images/259-0ad0d0bfc1c608b6.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt=""></p>
+
+      
+    </div>
+
+  </div>
+
+  <div class="article-footer">
+    <div class="article-meta pull-left">
+
+    
+
+    
+    
+
+    <span class="post-tags">
+      <i class="icon-tags"></i>
+        <a href="/tags/Android-高级进阶/">Android 高级进阶</a>
+    </span>
+    
+
+    </div>
+
+    
+  </div>
+</article>
+
+  
+	<section id="comment" class="comment">
+		<div id="gitment"></div>
+	</section>
+	<link rel="stylesheet" href="https://imsun.github.io/gitment/style/default.css">
+	<script src="https://imsun.github.io/gitment/dist/gitment.browser.js"></script>
+	<script>
+		var gitment = new Gitment({
+			owner: '',
+			repo: '',
+			oauth: {
+				client_id: '',
+				client_secret: '',
+			},
+		})
+		gitment.render('gitment')
+	</script>
+
+
+
+
+
+    </main>
+
+    <footer class="site-footer">
+  <p class="site-info">
+    Proudly powered by <a href="https://hexo.io/" target="_blank">Hexo</a> and
+    Theme by <a href="https://github.com/CodeDaraW/Hacker" target="_blank">Hacker</a>
+    </br>
+    
+    &copy; 2018 Sven Han
+    
+  </p>
+</footer>
+    
+  </div>
+</div>
+</body>
+</html>
