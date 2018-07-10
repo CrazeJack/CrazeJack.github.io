@@ -79,115 +79,12 @@
   <div class="article-content">
     <div class="entry">
       
-        <p>#jvm的垃圾回收策略</p>
-<p>#Android学习计划#  #第十四周# </p>
-<p>话题：简单描述下jvm的垃圾回收策略，比如引用计数、标记清除等策略 <br><br>关键字：引用计数、标记清除、gc <br></p>
-<p>###在讨论GC的原理之前，我们要搞清楚JVM对于内存是如何分配的<br>  Java 内存分配的原理是先一次性分配一块较大的空间，然后每次 new 是都在该空间上进行分配和释放，有点像内存池的做法。<br><br>  Java 一般内存申请有两种：静态内存和动态内存。<br>比如 int 类型变量的申请内存，所申请的内存是固定的，所以是一种静态存储。Java 栈、程序计数器、本地方法栈 都是线程私有的，而线程的管理与栈针密切相关,栈中的栈针会随着方法的结束也会撤销，内存自然也就回收了。<br><br>  重点是在方法区和 Java 堆，这部分的只有在程序运行期间我们才知道会创建哪些对象，所以这部分内存的分配和回收是动态进行的，一般来说我们所说的垃圾回收也是针对这两块。</p>
-<p>##<font color="red">言而总之，我们所谈及的回收策略一般来说包含两个步骤，一个是检测垃圾，另外一个是回收垃圾。</font></p>
-<p>##（一）检测垃圾<br>判断对象是否可以回收的算法：（两个：引用计数算法和可达性分析算法）</p>
-<p>1.引用计数算法</p>
-<blockquote>
-<p>给对象添加一个引用计数器，每当有一个地方引用它，计数器加1；</p>
-</blockquote>
-<blockquote>
-<p> 当引用失效，计数器值减1；</p>
-</blockquote>
-<blockquote>
-<p> 任何时刻计数器值为0，则认为对象是不再被使用的；    </p>
-</blockquote>
-<p><a>优点</a><br>实现简单，判定高效，可以很好解决大部分场景的问题</p>
-<p><a>缺点</a><br>（A）、很难解决对象之间相互循环引用的问题<br>（B）、并且开销较大，频繁且大量的引用变化，带来大量的额外运算<br>主流的JVM都没有选用引用计数算法来管理内存；</p>
-<p>2.可达性分析算法（Reachability Analysis）  </p>
-<blockquote>
-<p>通过一系列”GC Roots”对象作为起始点，开始向下搜索；<br>搜索所走过和路径称为引用链（Reference Chain）；<br>当一个对象到GC Roots没有任何引用链相连时（从GC Roots到这个对象不可达），则证明该对象是不可用的；  </p>
-</blockquote>
-<p><img src="F:\\1素材\\20170102213857043.jpg" alt="Alt text">  </p>
-<p>Java中，GC Roots对象包括：</p>
-<pre><code>（1）、虚拟机栈（栈帧中本地变量表）中引用的对象；
-
-（2）、方法区中类静态属性引用的对象；
-
-（3）、方法区中常量引用的对象；
-
-（4）、本地方法栈中JNI（Native方法）引用的对象；  
-</code></pre><p><a>优点</a><br>更加精确和严谨，可以分析出循环数据结构相互引用的情况；</p>
-<p><a>缺点</a>  </p>
-<ol>
-<li>实现比较复杂;  </li>
-<li>需要分析大量数据，消耗大量时间；<br><code>因为GC Roots主要在全局性的引用（常量或静态属性）和执行上下文中（栈帧中的本地变量表）要在这些大量的数据中，逐个检查引用，会消耗很多时间；</code>   </li>
-</ol>
-<p>3.分析过程需要GC停顿（引用关系不能发生变化），即停顿所有Java执行线程（称为”Stop The World”，是垃圾回收重点关注的问题）；<br>    <code>可达性分析期间需要保证整个执行系统的一致性，对象的引用关系不能发生变化；是JVM在后台自动发起和自动完成的；在用户不可见的情况下，把用户正常的工作线程全部停掉；</code></p>
-<p><a>下面继续谈谈可达性算法的执行过程</a><br>1.查找GC Roots，也叫作枚举根节点；然而主流JVM都是准确式GC，不需要全部、逐个检查，并且在HotSpot中，是使用一组称为OopMap的数据结构来达到这个目的的；  </p>
-<pre><code>只在特定的位置记录OopMap引用关系，这些位置称为安全点（Safepoint）；  
-特定位置有：基本上是以程序&quot;是否具有让程序长时间执行的特征&quot;为选定，如：方法调用、循环跳转、循环的末尾、异常跳转等，只有具有这些功能的指令才会产生Safepoint；
-</code></pre><p>在安全点上停顿的方式：（A）、抢先式中断（Preemptive Suspension）；（B）、主动式中断（Voluntary Suspension）</p>
-<p>##（二）回收垃圾<br>垃圾回收算法：</p>
-<p>1.复制算法</p>
-<p>2.标记-清除算法</p>
-<p>3.标记-整理算法</p>
-<p>4.分代收集算法</p>
-<p>#####分代收集算法（实际上是对前三种方法的良好应用）</p>
-<blockquote>
-<p>一般是把Java堆内存分为新生代和老年代,把Java对象分为（新生代、老年代、永久代三种），然后根据各个年代的特点采用最适当的收集算法。  </p>
-</blockquote>
-<blockquote>
-<p><a>在新生代中，每次垃圾收集时都发现有大批对象死去，只有少量存活，那就选用复制算法，只需要付出少量存活对象的复制成本就可以完成收集。</a>  </p>
-</blockquote>
-<blockquote>
-<font color="red"> 而老年代中因为对象存活率高、没有额外空间对它进行分配担保，就必须使用“标记-清理”或“标记-整理”算法来进行回收。</font>  
-</blockquote>
-<blockquote>
-<p>另外，方法区永久代的回收方法同老年代。</p>
-</blockquote>
-<p>#####jvm对内存区域划分为堆内存和方法区(栈呢？)<br>tips：一般的，Java中对象的内存分配都是在堆上进行，但现代技术也支持将对象拆成标量类型（标量类型即原子类型，表示单个值，可以是基本类型或String等），然后在栈上分配，在栈上分配的很少见</p>
-<blockquote>
-<p>新生代和老年代对象存在堆内存，永久代对象存在方法区</p>
-</blockquote>
-<p>##对于Java堆内存，JVM规范要求必须实现GC回收，但是JVM规范对方法区的GC并不做要求，所以垃圾回收算法都是针对Java堆内存的。    </p>
-<p>对于新生代对象：<br>使用复制算法：使用两块10%的内存作为空闲和活动区间，而另外80%的内存，则是用来给新建对象分配内存的。一旦发生GC，将10%的活动区间与另外80%中存活的对象转移到10%的空闲区间，接下来，将之前90%的内存全部释放，以此类推。</p>
-<p>对于老年代对象：<br>针对老年代对象只能采用标记/整理或者标记/清除算法。   </p>
-<p>对于永久代对象：<br>（已经不属于垃圾回收算法的内容了）在我们常用的hotspot虚拟机中（JDK默认的JVM），与老年代采用相似的方法，使用标记/清除和标记/整理算法。</p>
-<blockquote>
-<p>Tips：GC按照回收的区域又分了两种类型:一种是普通GC（minor GC）(只针对新生代)，一种是全局GC（major GC or Full GC）(针对所有分代区域)，</p>
-</blockquote>
-<p>#####1.在谈论回收垃圾对象之前，我们先说说Java中的对象是如何引用的<br>Java程序通过<code>reference</code>类型 操作堆上的具体对象，分为两个层面：jvm层面和Java语言层面；  </p>
-<ol>
-<li><p>jvm层面的引用  </p>
-<p>   reference类型是引用类型（Reference Types）的一种；</p>
-<p>   JVM规范规定reference类型来表示对某个对象的引用，可以想象成类似于一个指向对象的指针；</p>
-<p>   对象的操作、传递和检查都通过引用它的reference类型的数据进行操作；  </p>
-</li>
-<li><p>Java语言层面   </p>
-<pre><code>(1)强引用(2)软引用(3)弱引用(4)虚引用  
-</code></pre></li>
-</ol>
-<p>#####2.谈论完如何引用对象之后，再来谈谈如何判断对象是否存活<br>    要真正宣告一个对象死亡，至少要经历两次标记过程。 </p>
-<p><a>第一次标记</a><br> 在可达性分析后发现到GC Roots没有任何引用链相连时，被第一次标记；<br> 并且进行一次筛选：此对象是否必要执行finalize()方法；  </p>
-<pre><code>（A）、没有必要执行
-
-  没有必要执行的情况：
-
-  （1）、对象没有覆盖finalize()方法；
-
-  （2）、finalize()方法已经被JVM调用过；
-
-  这两种情况就可以认为对象已死，可以回收；
-
-（B）、有必要执行
-
-  对有必要执行finalize()方法的对象，被放入F-Queue队列中；
-
-  稍后在JVM自动建立、低优先级的Finalizer线程（可能多个线程）中触发这个方法；
-</code></pre><p><a>第二次标记</a><br>GC将对F-Queue队列中的对象进行第二次小规模标记；<br>finalize()方法是对象逃脱死亡的最后一次机会：  </p>
-<pre><code>（A）、如果对象在其finalize()方法中重新与引用链上任何一个对象建立关联，第二次标记时会将其移出&quot;即将回收&quot;的集合；
-
-（B）、如果对象没有，也可以认为对象已死，可以回收了；                    
-
-一个对象的finalize()方法只会被系统自动调用一次，经过finalize()方法逃脱死亡的对象，第二次不会再调用；  
-</code></pre><p>tips：关于finalize方法<br>finalize()是Object类的一个方法，是Java刚诞生时为了使C/C++程序员容易接受它所做出的一个妥协，但不要当作类似C/C++的析构函数；因为它执行的时间不确定，甚至是否被执行也不确定，<font color="red"> 一般情况下，应尽量避免使用它，甚至可以忘掉它。</font>  </p>
-<p>参考文章：<a href="https://blog.csdn.net/mccand1234/article/details/52078645" target="_blank" rel="noopener">Java 分代收集算法</a>     <a href="https://blog.csdn.net/tjiyu/article/details/53982412" target="_blank" rel="noopener">Java虚拟机垃圾回收</a>   </p>
-
-      
+  	
+  	
+  	  <p>#jvm的垃圾回收策略</p>
+  	  
+  	
+  
     </div>
 
   </div>
@@ -247,152 +144,12 @@
   <div class="article-content">
     <div class="entry">
       
-        <p>1.所有的startActivity方法最终都回调到startActivityForResult方法中来</p>
-<p>2.startActivity方法中调用了 Instrumentation 的execStartActivity方法</p>
-<p>3.execStartActivity方法里面启动Activity的真正实现是由 ActivityManagerNative.getDefault()的startActivity方法来完成</p>
-<p>4.ActivityManagerNative是ActivityManagerService的父类，而ActivityManagerNative又继承自Binder并实现了IActivityManager接口</p>
-<p>5.在ActivityManagerNative.getDefault()，是以单例模式对外提供对象的，封装类是Singleton</p>
-<p>6.最终启动Activity的任务转移到了AMS（ActivityManagerService）中，接下来看AMS中的startActivity方法做了什么</p>
-<p>7.继续转移到了ActivityStackSupervisor类中的startActivityMayWait方法中，该方法又调用了startActivityLocked方法，startActivityLocked又调用 startActivityUncheckedLocked方法，startActivityUncheckedLocked又调用了 ActivityStack的resumeTopActivitiesLocked方法</p>
-<p>8.此时，启动任务从类 ActivityStackSupervisor 转移到了类 ActivityStack 中来</p>
-<p>9.ActivityStack的resumeTopActivitiesLocked方法调用了 resumeTopActivityInnerLocked方法，它又调用了 ActivityStackSupervisor 的 startSpecificActivityLocked 方法</p>
-<p>10.startSpecificActivityLocked 方法调用了 realStartActivityLocked方法</p>
-<p>11.最终进入 app.thread.scheduleLaunchActivity()方法，app.thread类型为 IApplicationThread，它继承自IInterface接口，是一个Binder类型的接口</p>
-<p>12.IApplicationThread这个接口中申明了大量的 启动、停止Activity的方法，此外还包含了启动和停止服务的接口</p>
-<p>13.IApplicationThread的实现着又是如何实现这些方法的呢？ </p>
-<p>   在ActivityThread中的内部类 ApplicationThread 中，我们看到 ApplicationThread 继承了 ApplicationThreadNative ，而 ApplicationThreadNative 继承 Binder 并实现了 IApplicationThread 接口，</p>
-<p>   ApplicationThreadNative的作用和系统为AIDL文件生成的类是一样的</p>
-<p>   ApplicationThreadNative 内部还有一个ApplicationThreadProxy类，它也是系统为AIDL文件自动生成的代理类，由于 ApplicationThreadNative 被系统定义为抽象类，所以ApplicationThread就是 IApplicationThread 的最终实现者</p>
-<p>14.最终 启动Activity的任务被放到了 ApplicationThread 中来，它通过 scheduleLaunchActivity 方法来启动 Activity </p>
-<p>15.scheduleLaunchActivity 方法实现的很简单，发送一个Handler消息出来，我们继续看看 这个名字叫做 H 的handler如何处理这个消息的：</p>
-<p> Activity的启动由 ActivityThread 的 handlerLaunchActivity 方法来实现</p>
-<p>16.我们来看看这个 handlerLaunchActivity 方法，它里面的 performLaunchActivity 方法最终完成了 Activity对象的创建和启动过程</p>
-<p>17.并且，ActivityThread 通过 handleResumeActivity 方法来调用被启动Activity的 onResume 这个生命周期方法</p>
-<p>18.performLaunchActivity 这个方法主要完成了如下几件事情：</p>
-<ol>
-<li><p>从 ActivityClientRecord 中获取待启动的 Activity 的组件信息，代码如下：</p>
-<pre><code>ActivityInfo aInfo = r.activityInfo;
-if (r.packageInfo == null) {
-    r.packageInfo = getPackageInfo(aInfo.applicationInfo, r.compatInfo,
-            Context.CONTEXT_INCLUDE_CODE);
-}
-
-ComponentName component = r.intent.getComponent();
-if (component == null) {
-    component = r.intent.resolveActivity(
-        mInitialApplication.getPackageManager());
-    r.intent.setComponent(component);
-}
-
-if (r.activityInfo.targetActivity != null) {
-    component = new ComponentName(r.activityInfo.packageName,
-            r.activityInfo.targetActivity);
-}
-</code></pre></li>
-<li><p>通过 Instrumentation 的 newActivity 方法使用类加载器创建 Activity对象，代码如下：</p>
-<pre><code>Activity activity = null;
-try {
-    java.lang.ClassLoader cl = r.packageInfo.getClassLoader();
-    activity = mInstrumentation.newActivity(
-            cl, component.getClassName(), r.intent);
-    StrictMode.incrementExpectedActivityCount(activity.getClass());
-    r.intent.setExtrasClassLoader(cl);
-    r.intent.prepareToEnterProcess();
-    if (r.state != null) {
-        r.state.setClassLoader(cl);
-    }
-} catch (Exception e) {
-    if (!mInstrumentation.onException(activity, e)) {
-        throw new RuntimeException(
-            &quot;Unable to instantiate activity &quot; + component
-            + &quot;: &quot; + e.toString(), e);
-    }
-}
-</code></pre></li>
-<li><p>通过LoadedApk 的 makeApplication 方法来尝试创建 Application 对象，这里贴出 makeApplication 方法的源码：<br><pre>public Application makeApplication(boolean forceDefaultAppClass,Instrumentation instrumentation) {</pre></p>
-<pre><code>if (mApplication != null) {
-    return mApplication;
-}
-
-Application app = null;
-
-String appClass = mApplicationInfo.className;
-if (forceDefaultAppClass || (appClass == null)) {
-    appClass = &quot;android.app.Application&quot;;
-}
-
-try {
-    java.lang.ClassLoader cl = getClassLoader();
-    if (!mPackageName.equals(&quot;android&quot;)) {
-        initializeJavaContextClassLoader();
-    }
-    ContextImpl appContext = ContextImpl.createAppContext(mActivityThread, this);
-    app = mActivityThread.mInstrumentation.newApplication(
-            cl, appClass, appContext);
-    appContext.setOuterContext(app);
-} catch (Exception e) {
-    if (!mActivityThread.mInstrumentation.onException(app, e)) {
-        throw new RuntimeException(
-            &quot;Unable to instantiate application &quot; + appClass
-            + &quot;: &quot; + e.toString(), e);
-    }
-}
-mActivityThread.mAllApplications.add(app);
-mApplication = app;
-
-if (instrumentation != null) {
-    try {
-        instrumentation.callApplicationOnCreate(app);
-    } catch (Exception e) {
-        if (!instrumentation.onException(app, e)) {
-            throw new RuntimeException(
-                &quot;Unable to create application &quot; + app.getClass().getName()
-                + &quot;: &quot; + e.toString(), e);
-        }
-    }
-}
-
-// Rewrite the R &apos;constants&apos; for all library apks.
-SparseArray&lt;String&gt; packageIdentifiers = getAssets(mActivityThread)
-        .getAssignedPackageIdentifiers();
-final int N = packageIdentifiers.size();
-for (int i = 0; i &lt; N; i++) {
-    final int id = packageIdentifiers.keyAt(i);
-    if (id == 0x01 || id == 0x7f) {
-        continue;
-    }
-
-    rewriteRValues(getClassLoader(), packageIdentifiers.valueAt(i), id);
-}
-
-return app;
-</code></pre><p>}<code><br><br></code></p>
-</li>
-<li><p>创建 ContextImpl 对象并通过 Activity 的 attach 方法来完成重要数据的初始化:</p>
-<pre><code>Context appContext = createBaseContextForActivity(r, activity);
-            CharSequence title = r.activityInfo.loadLabel(appContext.getPackageManager());
-            Configuration config = new Configuration(mCompatConfiguration);
-            if (DEBUG_CONFIGURATION) Slog.v(TAG, "Launching activity "
-                    + r.activityInfo.name + " with config " + config);
-            activity.attach(appContext, this, getInstrumentation(), r.token,
-                    r.ident, app, r.intent, r.activityInfo, title, r.parent,
-                    r.embeddedID, r.lastNonConfigurationInstances, config,
-                    r.voiceInteractor);</code></pre>
-</li>
-<li><p>调用 Activity 的 onCreate 方法，完成整个启动过程。</p>
-<pre><code> if (r.isPersistable()) {
-                    mInstrumentation.callActivityOnPostCreate(activity, r.state,
-                            r.persistentState);
-                } else {
-                    mInstrumentation.callActivityOnPostCreate(activity, r.state);
-                }</code></pre>
-
-
-</li>
-</ol>
-<p>performLaunchActivity 方法：<br> private Activity performLaunchActivity(ActivityClientRecord r, Intent customIntent) {…}</p>
-
-      
+  	
+  	
+  	  <p>1.所有的startActivity方法最终都回调到startActivityForResult方法中来</p>
+  	  
+  	
+  
     </div>
 
   </div>
@@ -452,124 +209,12 @@ return app;
   <div class="article-content">
     <div class="entry">
       
-        <p><br></p>
-<h1 id="Twitter-的高性能序列化框架-Serial"><a href="#Twitter-的高性能序列化框架-Serial" class="headerlink" title="Twitter 的高性能序列化框架 Serial"></a>Twitter 的高性能序列化框架 Serial</h1><p><br></p>
-<blockquote>
-<p>数据序列化在 Android 应用开发中占据着举足轻重的位置，无论是进程间通信，本地数据存储，网络数据传输等等，都离不开序列化的支持。针对不同场景选择正确的序列化方案，对应用的性能有着极大的影响。</p>
-</blockquote>
-<blockquote>
-<p>广义上讲，序列化是将数据结构或者对象转换成可用于存储或者传输的数据格式的过程，在序列化期间，数据结构或者对象将其状态信息写入到临时或者持久性存储区中；反序列化是将序列化过程中生成的数据还原成数据结构或者对象的过程。Android 应用开发有很多种可选的序列化和反序列化方案，我们在《Android 高级进阶》一书的《Android 数据序列化方案研究》一节已经做过介绍。在正式开始 Serial 相关内容之前，这里我们先来简单回顾一下几个跟本文主题密切相关的序列化方式。</p>
-</blockquote>
-<font color="#159957" size="5" face="微软雅黑">序列化基础之</font>
-
-<font color="#159957" size="5" face="微软雅黑"><strong>Serializable</strong></font>
-
-<p><br></p>
-<blockquote>
-<p><em>Serializable</em> 是 Java 语言的特性，它是最简单的也是使用最广泛的序列化方案之一，只有实现了 Serializable 接口的 Java 对象才可以实现内建的序列化，这种类型的序列化是将 Java 对象转换成字节序列的过程，而反序列化则是将字节序列恢复成 Java 对象的过程。</p>
-</blockquote>
-<pre>
-public interface Serializable{
-}
-</pre>
-Serializable 接口是一种标识接口，也就是无需实现方法，Java 便会对这个对象进行序列化操作。它的缺点是使用反射机制，在序列化的过程中会创建很多临时对象，容易触发垃圾回收，序列化的过程比较慢，对于性能要求很严格的场景不建议使用这种方案。
-
-
-<font color="#159957" size="5" face="微软雅黑">**Externalizable**</font>
-
-Externalizable 接口继承自 Serializable 接口，并定义了 `writeExternal` 和 `readExternal` 这两个方法，从而让开发者对序列化过程拥有更多的控制权，方便的实现自定义操作，同时可以实现一些使用 Serializable 接口无法实现的功能，例如实现 Serializable 接口的对象，其中 static 和 transient 类型的成员变量默认是不会被序列化的，而通过实现 Externalizable 接口开发者可以对 static 和 transient 类型的成员变量进行手动序列化的。
-<pre>
-public interface Externalizable extends java.io.Serializable { 
- void writeExternal(ObjectOutput out)throws IOException; 
- void readExternal(ObjectInput in)throws IOException,ClassNotFoundException;
-}
-</pre>
-当然，Externalizable 接口的序列化机制跟 Serializable 接口一样，都是基于反射机制的，性能方面也是比较差的。
-
-<br>
-<font color="#159957" size="5" face="微软雅黑">**Parcelable**</font>
-<br>
-
-前面两种序列化方式都是 Java 内置的接口，可以将对象序列化到磁盘文件，数据库，网络等。到了 Android 平台，为了实现 Android 应用内以及应用间（基于 AIDL）高效的数据传输，Android 设计了 Parcelable 接口，需要注意的是，Parcelable 只支持内存方式的序列化，不能将对象序列化到磁盘等介质。
-因此，Serial 跟 Serializable（Externalizable）的关键区别是性能，跟 Parcelable 的关键区别是能够序列化到的介质。
-<pre>
-public interface Parcelable {
-    public static final int PARCELABLE_WRITE_RETURN_VALUE = 0x0001;
-    public static final int CONTENTS_FILE_DESCRIPTOR = 0x0001;
-
-    public int describeContents();
-    public void writeToParcel(Parcel dest, int flags);
-    public interface Creator<t> {
-        public T createFromParcel(Parcel source);
-        public T[] newArray(int size);
-    }
-    public interface ClassLoaderCreator<t> extends Creator<t> {
-        public T createFromParcel(Parcel source, ClassLoader loader);
-    }
-}
-</t></t></t></pre>
-
-
-<font color="#159957" size="5" face="微软雅黑"><strong>Serial的特性</strong></font>
-
-<p>Android 应用的流畅度是影响用户体验的关键性能指标之一，没有用户会喜欢使用起来卡顿的应用。具体到 Twitter 的 Android 端应用，经过性能剖析，他们的开发者发现，使用标准的 Android Externalizable 接口实现的 Java 对象和数据库之间的序列化和反序列化所花的时间占 UI 线程时间的 15% 左右，这使得 Twitter 时间轴滚动的流畅度受到对象序列化的严重影响。现有的对象序列化开源库对对象的迭代式修改提供的支持有限，任何可能破坏对象序列化的修改都会引入难以定位的 bugs，修复起来也非常困难，除非清除数据库数据。因此，Twitter 研发并于近期推出了 <a href="https://github.com/twitter/Serial" target="_blank" rel="noopener">Serial</a>，一个开源的基于 Java 平台的轻量级对象序列化框架（同时支持 Android 平台）。</p>
-<p>Serial 解决了传统 Android 序列化函数库的以下四大痛点：</p>
-<ol>
-<li>性能：缓慢的序列化直接影响用户体验</li>
-<li>可调试性：当序列化后的数据中存在 bugs 时，调试信息不足以定位问题的原因</li>
-<li>向后兼容性：在不完全清除序列化后数据的前提下，Android 提供的序列化函数库几乎不支持对序列化对象进行修改，这使得对象属性的迭代升级变得困难</li>
-<li>灵活性：序列化函数库的使用应该对现有代码和模型类的数据结构侵入性小</li>
-</ol>
-<p>虽然现有的一些 Java 序列化函数库像 <a href="https://github.com/EsotericSoftware/kryo/" target="_blank" rel="noopener">Kryo</a> 和 <a href="http://google.github.io/flatbuffers/" target="_blank" rel="noopener">Flatbuffer</a> 尝试解决上面一些痛点，但这些函数库重点在对性能和向后兼容性的支持上，通常忽略了对可调试性和灵活性的支持，例如为了在项目中使用这些函数库，通常需要对现有代码库作较大的改动。</p>
-<p>使用 Java 的 Externalizable 类实现序列化时，类相关信息例如类名和包名，会被添加进序列化后生成的二进制数据中。这样，Java 平台才能根据这些信息在反序列化时通过反射机制还原这个对象，但同时这是一个非常耗时的操作。为了解决这个问题，Serial 通过规范开发者为每个需要序列化的对象实现 <code>Serializer</code> 内部类，并明确列举哪些属性需要序列化和反序列化，从而摒弃了反射机制和动态查找的使用。</p>
-<p>使用 Serial 对一个大对象进行序列化和反序列化测试，和 Externalizable 方式相比，初步的性能指标如下所示：</p>
-<ul>
-<li>序列化速度提升 5 倍，反序列化速度提升 2.5 倍</li>
-<li>序列化后生成的数据字节大小约等于原来的 1/5</li>
-</ul>
-<p><font color="#159957" size="5" face="微软雅黑"><strong>Serial 的基本用法</strong></font><br><br></p>
-<p>Serial 的使用很简单，首先我们为每个需要序列化的类定义一个 Serializer，它通常是以静态内部类的形式存在，并通过定义名为 SERIALIZER 的静态变量来访问它。Serializer 要求开发者显式的对序列化类中的属性进行读写，如果是原始数据类型，那么直接读写即可，如果是对象类型则递归调用该对象中定义的 Serializer 来读写。Serializer 在读写对象类型和字符串类型时能自动处理 null 对象。下面的例子中，我们在 ExampleObject 类中定义了一个继承自 ObjectSerializer 的 Serializer 内部类，并重写 serializeObject 和 deserializeObject 方法分别实现自定义的序列化和反序列化。</p>
-<pre>
-public static class ExampleObject {
-
-    // 序列化时会使用到这个静态变量
-    public static final ObjectSerializer<exampleobject> SERIALIZER = new ExampleObjectSerializer();
-
-    public final int num;
-    public final SubObject obj;
-
-    public ExampleObject(int num, @NotNull SubObject obj) {
-        this.num = num;
-        this.obj = obj;
-    }
-
-    ...
-
-    private static final ExampleObjectSerializer extends ObjectSerializer<exampleobject> {
-        // 自定义序列化操作
-        @Override
-        protected void serializeObject(@NotNull SerializerOutput output,
-                @NotNull ExampleObject object) throws IOException {
-            output.writeInt(object.num)
-                .writeObject(object.obj, SubObject.SERIALIZER);
-        }
-
-        // 自定义反序列化操作
-        @Override
-        @NotNull
-        protected ExampleObject deserializeObject(@NotNull SerializerInput input,
-                int versionNumber) throws IOException, ClassNotFoundException {
-            final int num = input.readInt();
-            final SubObject obj = input.readObject(SubObject.SERIALIZER);
-            return new ExampleObject(num, obj);
-        }
-    }
-}</exampleobject></exampleobject></pre>
-
-<p>上面这个例子 ExampleObject 是通过构造方法初始化的，但有的时候，我们会使用 <strong>Builder 模式</strong>来实例化一个类（详情可以参见《Android 高级进阶》一书的《Builder 模式详解》一节）；又或者在 Serial 中要实现对象的迭代式修改，这时候我们的 Serializer 类就不能继承 ObjectSerializer，而应该继承 BuilderSerializer 类，并重写 createBuilder，serializeObject 和 deserializeToBuilder 这三个方法。</p>
-<p>关注我的GitHub主页 <a href="https://github.com/CrazeJack" target="_blank" rel="noopener">CrazeJack</a>.<br><img src="http://upload-images.jianshu.io/upload_images/259-0ad0d0bfc1c608b6.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt=""></p>
-
-      
+  	
+  	
+  	  <p><br></p>
+  	  
+  	
+  
     </div>
 
   </div>
@@ -629,8 +274,11 @@ public static class ExampleObject {
   <div class="article-content">
     <div class="entry">
       
-        <h1 id="学习阅读Android源码"><a href="#学习阅读Android源码" class="headerlink" title="学习阅读Android源码"></a>学习阅读Android源码</h1>
-      
+  	
+  	
+  	  <h1 id="学习阅读Android源码"><a href="#学习阅读Android源码" class="headerlink" title="学习阅读Android源码"></a>学习阅读Android源码</h1>
+  	
+  
     </div>
 
   </div>

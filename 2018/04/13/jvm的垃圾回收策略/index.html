@@ -85,7 +85,9 @@
   <div class="article-content">
     <div class="entry">
       
-        <p>#jvm的垃圾回收策略</p>
+  	
+  	
+  	  <p>#jvm的垃圾回收策略</p>
 <p>#Android学习计划#  #第十四周# </p>
 <p>话题：简单描述下jvm的垃圾回收策略，比如引用计数、标记清除等策略 <br><br>关键字：引用计数、标记清除、gc <br></p>
 <p>###在讨论GC的原理之前，我们要搞清楚JVM对于内存是如何分配的<br>  Java 内存分配的原理是先一次性分配一块较大的空间，然后每次 new 是都在该空间上进行分配和释放，有点像内存池的做法。<br><br>  Java 一般内存申请有两种：静态内存和动态内存。<br>比如 int 类型变量的申请内存，所申请的内存是固定的，所以是一种静态存储。Java 栈、程序计数器、本地方法栈 都是线程私有的，而线程的管理与栈针密切相关,栈中的栈针会随着方法的结束也会撤销，内存自然也就回收了。<br><br>  重点是在方法区和 Java 堆，这部分的只有在程序运行期间我们才知道会创建哪些对象，所以这部分内存的分配和回收是动态进行的，一般来说我们所说的垃圾回收也是针对这两块。</p>
@@ -193,7 +195,8 @@
 </code></pre><p>tips：关于finalize方法<br>finalize()是Object类的一个方法，是Java刚诞生时为了使C/C++程序员容易接受它所做出的一个妥协，但不要当作类似C/C++的析构函数；因为它执行的时间不确定，甚至是否被执行也不确定，<font color="red"> 一般情况下，应尽量避免使用它，甚至可以忘掉它。</font>  </p>
 <p>参考文章：<a href="https://blog.csdn.net/mccand1234/article/details/52078645" target="_blank" rel="noopener">Java 分代收集算法</a>     <a href="https://blog.csdn.net/tjiyu/article/details/53982412" target="_blank" rel="noopener">Java虚拟机垃圾回收</a>   </p>
 
-      
+  	
+  
     </div>
 
   </div>

@@ -84,7 +84,9 @@
   <div class="article-content">
     <div class="entry">
       
-        <p>1.所有的startActivity方法最终都回调到startActivityForResult方法中来</p>
+  	
+  	
+  	  <p>1.所有的startActivity方法最终都回调到startActivityForResult方法中来</p>
 <p>2.startActivity方法中调用了 Instrumentation 的execStartActivity方法</p>
 <p>3.execStartActivity方法里面启动Activity的真正实现是由 ActivityManagerNative.getDefault()的startActivity方法来完成</p>
 <p>4.ActivityManagerNative是ActivityManagerService的父类，而ActivityManagerNative又继承自Binder并实现了IActivityManager接口</p>
@@ -229,7 +231,8 @@ return app;
 </ol>
 <p>performLaunchActivity 方法：<br> private Activity performLaunchActivity(ActivityClientRecord r, Intent customIntent) {…}</p>
 
-      
+  	
+  
     </div>
 
   </div>

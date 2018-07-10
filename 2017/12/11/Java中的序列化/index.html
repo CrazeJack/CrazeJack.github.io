@@ -88,7 +88,9 @@
   <div class="article-content">
     <div class="entry">
       
-        <p><br></p>
+  	
+  	
+  	  <p><br></p>
 <h1 id="Twitter-的高性能序列化框架-Serial"><a href="#Twitter-的高性能序列化框架-Serial" class="headerlink" title="Twitter 的高性能序列化框架 Serial"></a>Twitter 的高性能序列化框架 Serial</h1><p><br></p>
 <blockquote>
 <p>数据序列化在 Android 应用开发中占据着举足轻重的位置，无论是进程间通信，本地数据存储，网络数据传输等等，都离不开序列化的支持。针对不同场景选择正确的序列化方案，对应用的性能有着极大的影响。</p>
@@ -205,7 +207,8 @@ public static class ExampleObject {
 <p>上面这个例子 ExampleObject 是通过构造方法初始化的，但有的时候，我们会使用 <strong>Builder 模式</strong>来实例化一个类（详情可以参见《Android 高级进阶》一书的《Builder 模式详解》一节）；又或者在 Serial 中要实现对象的迭代式修改，这时候我们的 Serializer 类就不能继承 ObjectSerializer，而应该继承 BuilderSerializer 类，并重写 createBuilder，serializeObject 和 deserializeToBuilder 这三个方法。</p>
 <p>关注我的GitHub主页 <a href="https://github.com/CrazeJack" target="_blank" rel="noopener">CrazeJack</a>.<br><img src="http://upload-images.jianshu.io/upload_images/259-0ad0d0bfc1c608b6.jpg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt=""></p>
 
-      
+  	
+  
     </div>
 
   </div>
